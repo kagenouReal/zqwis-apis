@@ -199,7 +199,7 @@ width: 0 !important;
 });
 
 await page.setViewportSize({ width: 1080, height: 1600 });
-await page.goto(hero.url, { waitUntil: "domcontentloaded", timeout: 45000 });
+await page.goto(hero.url, { waitUntil: "networkidle", timeout: 45000 });
 await page.waitForTimeout(600);
 
 await page.screenshot({
