@@ -268,20 +268,13 @@ embedPermission: user.profileEmbedPermission,
 isEmbedBanned: user.isEmbedBanned,
 };
 }
-
-async function getHTML(url) {
-const { data } = await axios.get(url, {
-headers: {
-'User-Agent': 'Mozilla/5.0 (Linux; Android 12; kageireng/1.0)',
-},
-timeout: 20000,
-});
-return data;
-}
 async function SKurama(searchText, limit) { 
 const searchUrl = `https://m2.kuramanime.tel/anime?order_by=popular&search=${encodeURIComponent(searchText)}&page=1`;
 try {
-const html = await getHTML(searchUrl);
+const html = await axios.get(searchUrl, {
+headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
+timeout: 20000
+});
 const $ = cheerio.load(html);
 const animeList = []; 
 $('#animeList .filter__gallery a').each((i, el) => {
@@ -298,7 +291,10 @@ if (href && title) animeList.push({ title, href, thumb });
 if (!animeList.length) return [];
 return await Promise.all(animeList.map(async anime => {
 try {
-const detailHtml = await getHTML(anime.href);
+const detailHtml = await axios.get(anime.href, {
+headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
+timeout: 20000
+});
 const $$ = cheerio.load(detailHtml); 
 const epHtml = $$('#episodeLists').attr('data-content') || '';
 const batchHtml = $$('#episodeBatchLists').attr('data-content') || '';
@@ -572,7 +568,10 @@ detailUrl = text;
 try {
 let page = getRandomInt(1, 80); 
 const url = `https://motionbgs.com/tag:anime/${page}/`;
-const html = await getHTML(url);
+const html = await axios.get(url, {
+headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
+timeout: 20000
+});
 const $ = cheerio.load(html);
 let detailLinks = [];
 $('.tmb a').each((i, el) => {
@@ -592,7 +591,10 @@ return null;
 } 
 if (!detailUrl) return null;
 try {
-const res = await getHTML(detailUrl);
+const res = await axios.get(detailUrl, {
+headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
+timeout: 20000
+});
 const $ = cheerio.load(res);
 const title = $('title').text().trim() || $('h1.ttl').text().trim() || "No Title Found";
 const videoSource = $('video source').attr('src'); 
