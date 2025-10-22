@@ -1,0 +1,12 @@
+{
+  "users": {
+    "dep": {
+      "email": "dep@Zstres.my",
+      "password": "dep",
+      "role": "premium",
+      "apiKey": "Zstresxa7hfG1zXh",
+      "usage": 1
+    }
+  },
+  "chats": {}
+}
