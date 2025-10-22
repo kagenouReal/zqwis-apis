@@ -933,13 +933,11 @@ break;
 console.error(`Gagal mengunduh URL video ${url}:`, err.message);
 }
 }
-
-let savedAudio = false, audioUrlSegment = null; // Ganti audioPath
+let savedAudio = false, audioUrlSegment = null; 
 let musicUrl = null;
 let musicTitle = null;
 let musicAuthor = null;
 const music = videoData.music || videoData.musicInfo || null;
-
 if (music) {
 musicUrl = music.playUrl || music.playAddr || music.playAddrLowbr || null;
 musicTitle = music.title || 'Unknown Title';
@@ -951,15 +949,10 @@ for (const mUrl of uniqMusic) {
 try {
 const { buf, headers } = await downloadBuffer(mUrl, page.url());
 if (!buf || buf.length < 50) continue;
-
-// --- PERBAIKAN PATH (AUDIO VIDEO) ---
 const audioFileName = `${Date.now()}_audio.mp3`;
 const audioFullSavePath = path.resolve('./public/assets', audioFileName);
-
-fs.writeFileSync(audioFullSavePath, buf); // Menggunakan path lengkap yang benar
-audioUrlSegment = `/assets/${audioFileName}`; // Simpan URL segment
-// ------------------------------------
-
+fs.writeFileSync(audioFullSavePath, buf); 
+audioUrlSegment = `/assets/${audioFileName}`; 
 savedAudio = true;
 break;
 } catch (err) {
@@ -967,12 +960,8 @@ console.error(`Gagal mengunduh musik URL ${mUrl}:`, err.message);
 }
 }
 }
-
-// --- FINAL URLS ---
 const videoUrl = savedVideo ? `${global.domain}${videoUrlSegment}` : null;
 const audioUrl = savedAudio ? `${global.domain}${audioUrlSegment}` : null;
-// ------------------
-
 const meta = {
 id: videoData.id || null,
 type: "video",
@@ -1002,8 +991,8 @@ scrapedAt: new Date().toISOString(),
 
 return {
 type: "video",
-videoUrl: videoUrl, // Perbaikan nama variabel dari videoPath
-audioUrl: audioUrl, // Perbaikan nama variabel dari audioPath
+videoUrl: videoUrl, 
+audioUrl: audioUrl, 
 meta,
 };
 } catch (err) {

@@ -1,6 +1,8 @@
 require('../../config');
 const os = require('os');
 const {parseInterval, runtime, loadDatabase, saveDatabase } = require('./LoadDB');
+const fs = require('fs');
+const path = require('path');
 global.db = loadDatabase();
 //=============
 function checkLimit(req, res, next) {
@@ -40,40 +42,73 @@ saveDatabase(global.db);
 next();
 }
 //============
-function resetUsageAll() {
-if (!global.db || !global.db.users) return;
+async function resetUsageAll() {
+if (global.db && global.db.users) {
 for (const email in global.db.users) {
 if (global.db.users[email]) {
 global.db.users[email].usage = 0;
 console.log(`Reset Limit untuk user ${email}`);
 }
 }
+if (typeof saveDatabase === 'function') {
 saveDatabase(global.db);
-console.log(`[Limit] Semua usage berhasil direset`);
+}
+console.log('[Limit] Semua usage berhasil direset');
+}
+const folderPath = path.join(__dirname, '../../public/assets');
+const whitelist = ['logo.png', 'mine.mp4', 'miyu.mp4', 'sagiri.gif', 'saku.mp4', 'Snow.js'];
+try {
+const files = await fs.promises.readdir(folderPath);
+for (const file of files) {
+if (!whitelist.includes(file)) {
+const filePath = path.join(folderPath, file);
+const stats = await fs.promises.stat(filePath);
+if (stats.isFile()) {
+await fs.promises.unlink(filePath);
+} else if (stats.isDirectory()) {
+await fs.promises.rm(filePath, { recursive: true, force: true });
+}
+}
+}
+console.log('[Assets] Folder assets telah dibersihkan');
+} catch (err) {
+console.error('Error bersihin assets:', err);
+}
 }
 //============
 function requireLogin(req, res, next) {
-const apiKey = req.query.apikey || req.headers['x-api-key'];
-if (apiKey && apiKey === global.apikey) {
-req.session = req.session || {};
-req.session.username = global.username;
-return next();
-}
+const apiKeyRaw =
+req.query.apikey ??
+req.query.apiKey ??
+req.headers['x-api-key'] ??
+req.headers['X-API-KEY'] ??
+(req.headers.authorization && req.headers.authorization.split(' ')[1]) ??
+null;
+const apiKey = apiKeyRaw ? String(apiKeyRaw).trim() : null;
+function isValidApiKey(key) {
+if (!key) return false;
+const g = global.apikey ? String(global.apikey).trim() : null;
+if (g && key.toLowerCase() === g.toLowerCase()) return { type: 'global', username: global.username };
 const users = global.db?.users || {};
-const foundUser = Object.entries(users).find(([username, data]) => data.apiKey === apiKey);
-if (foundUser) {
-const [username] = foundUser;
+for (const [username, data] of Object.entries(users)) {
+if (data?.apiKey && String(data.apiKey).trim().toLowerCase() === key.toLowerCase()) {
+return { type: 'user', username };
+}
+}
+return false;
+}
+const valid = isValidApiKey(apiKey);
+if (valid) {
 req.session = req.session || {};
-req.session.username = username;
+req.session.username = valid.username || 'api';
+req.session.loggedIn = true;
 return next();
 }
-if (!req.session.loggedIn) {
-if (req.method === 'GET') {
-return res.redirect('/');
-} else {
-return res.status(401).json({ success: false, error: '401: Pergi Login Dulu Anjg' });
+if (req.path.startsWith('/api')) {
+if (!apiKey) return res.status(401).json({ success: false, error: '401: API key required' });
+return res.status(401).json({ success: false, error: '401: Invalid API key' });
 }
-}
+if (!req.session?.loggedIn) return res.redirect('/');
 next();
 }
 //============
