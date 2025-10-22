@@ -19,9 +19,9 @@ desktop: { width: 1280, height: 720 },
 mobile: { width: 720, height: 1280 }
 };
 const vp = VIEWPORTS[mode];
-const fname = `/ssweb_${mode}_${Date.now()}.jpg`;
+const fname = `ssweb_${mode}_${Date.now()}.jpg`;
 const outPath = path.resolve('./public/assets', fname); 
-const publicUrl = `${global.domain}/assets${fname}`;
+const publicUrl = `${global.domain}/assets/${fname}`; 
 const args = [
 '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage',
 '--disable-background-networking','--disable-background-timer-throttling',
@@ -85,6 +85,7 @@ const res = await axios.get("https://guardiantalesguides.com/game/guardians/", {
 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
 timeout: 20000
 });
+
 const $ = cheerio.load(res.data);
 const heroes = [];
 $('.portrait a').each((i, el) => {
@@ -98,10 +99,12 @@ const result = fuzzysort.go(name, heroes.map(h => h.name), { limit: 1, threshold
 if (!result.length) throw new Error('❌ Hero tidak ditemukan.');
 const bestName = result[0].target;
 const hero = heroes.find(h => h.name === bestName);
+
 const detailRes = await axios.get(hero.url, {
 headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36' },
 timeout: 20000
 });
+
 const $$ = cheerio.load(detailRes.data);
 const data = {};
 data.name = $$('h1.heading').text().trim();
@@ -109,6 +112,7 @@ data.image = 'https://guardiantalesguides.com' + $$('div.portrait img').attr('sr
 data.school = $$('div.stats div:contains("School:") em').text().trim();
 data.groupBuff = $$('div.stats div:contains("Group Buff:") em').text().trim();
 data.introduced = $$('div.stats div:contains("Introduced:")').text().replace('Introduced:', '').trim();
+
 data.abilities = [];
 $$('#guardianInfo > div').each((i, el) => {
 const type = $$(el).find('.heading').text().trim();
@@ -116,6 +120,7 @@ const title = $$(el).find('.text h5').text().trim();
 const desc = $$(el).find('.text').text().replace(title, '').trim();
 data.abilities.push({ type, title, desc });
 });
+
 data.bestItems = [];
 $$('.bestInSlots .item').each((i, el) => {
 const itemName = $$(el).find('.topDetails .name').text().trim();
@@ -131,8 +136,12 @@ image: itemImg.startsWith('http') ? itemImg : 'https://guardiantalesguides.com' 
 });
 }
 });
+
 const safeName = hero.name.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-const output = path.resolve(`./public/assets/gt_${safeName}.jpg`);
+const fileName = `gt_${safeName}.jpg`;
+const outputPath = path.resolve(global.outPath || './public/assets', fileName);
+const publicUrl = `${global.domain}/assets/${fileName}`;
+
 const args = [
 '--no-sandbox',
 '--disable-setuid-sandbox',
@@ -161,24 +170,23 @@ const args = [
 '--password-store=basic',
 '--use-mock-keychain',
 '--hide-scrollbars',
-'--window-size=1280,720',
+'--window-size=1080,1600',
 '--disable-gpu'
 ];
+
 const browser = await chromium.launch({ headless: true, args });
 const page = await browser.newPage();
+
 await page.route('**/*', route => {
 const url = route.request().url();
-if (
-/doubleclick|adsystem|adservice|googlesyndication|taboola|outbrain|adnxs|rubicon|pubmatic|scorecardresearch|facebook|twitter|tiktok|youtube/i.test(url) ||
-url.includes('/ads/') ||
-url.includes('banner') ||
-url.includes('affiliate')
-) {
+if (/doubleclick|adsystem|adservice|googlesyndication|taboola|outbrain|adnxs|rubicon|pubmatic|scorecardresearch|facebook|twitter|tiktok|youtube/i.test(url) ||
+url.includes('/ads/') || url.includes('banner') || url.includes('affiliate')) {
 route.abort();
 } else {
 route.continue();
 }
 });
+
 await page.addStyleTag({
 content: `
 iframe, ins, .ad, .ads, .banner, .sponsor, [id*="ad_"], [class*="ad-"], [class*="banner"], [class*="sponsor"] {
@@ -189,17 +197,25 @@ width: 0 !important;
 }
 `
 });
+
 await page.setViewportSize({ width: 1080, height: 1600 });
 await page.goto(hero.url, { waitUntil: "domcontentloaded", timeout: 45000 });
 await page.waitForTimeout(600);
+
 await page.screenshot({
-path: output,
+path: outputPath,
 type: 'jpeg',
 quality: 50,
 clip: { x: 0, y: 195, width: 1080, height: 1400 - 195 }
 });
+
 await browser.close();
-return { hero: hero.name, file: output, details: data };
+
+return { 
+hero: hero.name, 
+file: publicUrl, 
+details: data 
+};
 } catch (err) {
 console.error('❌ Error:', err.message);
 return null;
@@ -371,10 +387,7 @@ const $ = cheerio.load(res.data);
 const imageUrl = $('#gimg').attr('src');
 if (!imageUrl || !imageUrl.endsWith('.jpg')) return null;
 return {
-source: 'IMHENTAI.XXX',
-imageUrl: imageUrl,
-caption: `*♯ ʜᴇɴᴛᴀɪ💦*`,
-pageUrl: detailUrl
+imageUrl: imageUrl
 };
 } catch (error) {
 console.error("[IMHENTAI] Failed:", error.message);
@@ -386,10 +399,8 @@ try {
 const res = await axios.get(`https://api.waifu.pics/nsfw/neko`);
 const json = res.data;
 if (json.url) {
-return { 
-source: 'WAIFU.PICS (NEKO)',
-imageUrl: json.url,
-caption: `*♯ ʜᴇɴᴛᴀɪ💦*`
+return {
+imageUrl: json.ur
 };
 }
 return null;
@@ -403,10 +414,8 @@ try {
 const res = await axios.get(`https://api.waifu.pics/nsfw/waifu`);
 const json = res.data;
 if (json.url) {
-return { 
-source: 'WAIFU.PICS (WAIFU)',
-imageUrl: json.url,
-caption: `*♯ ʜᴇɴᴛᴀɪ💦*`
+return {
+imageUrl: json.url
 };
 }
 return null;
@@ -487,7 +496,7 @@ return null;
 }
 }
 
-async function SKurama(searchText, limit) { 
+async function SKurama(searchText, limit = 5) { 
 const searchUrl = `https://m2.kuramanime.tel/anime?order_by=popular&search=${encodeURIComponent(searchText)}&page=1`;
 try {
 const html = await getHTML(searchUrl);
@@ -523,21 +532,12 @@ batch$('a').each((_, a) => {
 const link = batch$(a).attr('href');
 if (link && link.includes('/batch/')) batches.push(link);
 });
-const safeTitle = (anime.title || 'Unknown');
-const epText = episodes.length ? episodes.join('\n') : ('— (Kosong)');
-const batchText = batches.length ? batches.join('\n') : ('— (Kosong)');
-const caption =
-`⌗ *${safeTitle}*
-> ${('ʟɪɴᴋ')}: ${anime.href}
-
-> ${('ᴇᴘɪsᴏᴅᴇs')}:
-${epText}
-
-> ${('ʙᴀᴛᴄʜ')}:
-${batchText}`;
 results.push({
-caption: caption,
+title: anime.title || 'Unknown',
+href: anime.href,
 thumb: anime.thumb,
+episodes: episodes.length ? episodes : null,
+batches: batches.length ? batches : null,
 });
 } catch (e) {
 console.log(`[error] ${anime.title}: ${e.message}`);
@@ -550,7 +550,7 @@ return [];
 }
 
 async function DKurama(url) {
-const args=[
+const args = [
 '--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-accelerated-2d-canvas',
 '--disable-accelerated-jpeg-decoding','--disable-accelerated-video-decode','--disable-audio-output',
 '--disable-background-networking','--disable-background-timer-throttling','--disable-backgrounding-occluded-windows',
@@ -561,10 +561,13 @@ const args=[
 '--password-store=basic','--use-mock-keychain','--headless=new','--blink-settings=imagesEnabled=false',
 '--hide-scrollbars','--window-size=1,1'
 ];
+
 const browser = await chromium.launch({ headless: true, args });
 const page = await browser.newPage();
+
 let targetHtml = null;
 let pageHtml = null; 
+
 page.on('response', async (response) => {
 const resUrl = response.url();
 if (resUrl.includes('kuramadrive') || resUrl.includes('animeDownloadLink')) {
@@ -574,11 +577,14 @@ if (body.includes('animeDownloadLink')) targetHtml = body;
 } catch {}
 }
 });
+
 await page.goto(url, { waitUntil: 'networkidle' });
 await page.waitForTimeout(10000); 
 pageHtml = await page.content(); 
 await browser.close();
+
 if (!targetHtml && !pageHtml) return null;
+
 const downloads = [];
 const $ = cheerio.load(targetHtml || ''); 
 $('#animeDownloadLink h6').each((_, el) => {
@@ -592,39 +598,24 @@ if (href && href.startsWith('http')) links.push({ name, href });
 });
 if (links.length) downloads.push({ resolution: resoText, links });
 });
-const streamLinks = [];
+
+const streams = [];
 const $$ = cheerio.load(pageHtml || '');
 $$('video#player source').each((_, el) => {
 const res = $$(el).attr('size') || 'Unknown';
 const src = $$(el).attr('src');
-if (src && src.startsWith('http')) {
-streamLinks.push({ resolution: res, url: src });
-}
+if (src && src.startsWith('http')) streams.push({ resolution: res, url: src });
 });
-let caption = `*⌗ ${('download links')}*\n\n`;
-if (downloads.length) {
-for (const d of downloads) {
-caption += `> ${('resolution')}: *${(d.resolution)}*\n`;
-for (const l of d.links) caption += `> ${(l.name)}: ${l.href}\n`;
-caption += '\n';
-}
-} else {
-caption += `> — ${('no download links found')} —\n\n`;
-}
-if (streamLinks.length) {
-caption += `*⌗ ${('stream links')}*\n\n`;
-for (const s of streamLinks) {
-caption += `> ${('resolution')} ${s.resolution}p: ${s.url}\n`; 
-}
-}
-return { 
-caption: caption.trim(),
+return {
+url: url,
+downloads: downloads.length ? downloads : null,
+streams: streams.length ? streams : null,
 };
 }
 
 async function tiktokscrape(url) {
 if (!url) return;
-let cleanUrl = url;   
+let cleanUrl = url; 
 if (url.includes('vt.tiktok.com')) {
 try {
 const resp = await axios.get(url, { maxRedirects: 0, validateStatus: null });
@@ -647,7 +638,7 @@ if (!v) return [];
 if (Array.isArray(v)) return v;
 return [v];
 }
-   
+ 
 if (isImagePost) {
 const iphone = devices['iPhone 13'];
 const args = [
@@ -739,7 +730,7 @@ const postId = photoData.id || `post_${Date.now()}`;
 const createTime = photoData.createTime
 ? new Date(photoData.createTime * 1000).toISOString()
 : null;
-   
+ 
 const imagePaths = []; 
 
 for (let i = 0; i < imageUrls.length; i++) {
@@ -807,7 +798,7 @@ scrapedAt: new Date().toISOString(),
 return {
 type: "image",
 photoUrls: photoUrls, 
-audioUrl: audioUrl,   
+audioUrl: audioUrl, 
 meta,
 };
 } catch (err) {
