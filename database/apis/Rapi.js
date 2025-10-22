@@ -44,7 +44,7 @@ res.status(e.status || 500).json({ success: false, error: e.message });
 });
 //=====================
 router.get("/tiktokinfo",requireLogin,checkLimit, async (req, res) => {
-const { username } = req.params;
+const { username } = req.query.q;
 if (!username) return res.status(400).json({ success: false, error: "Username required" });
 try {
 const data = await getTiktokInfo(username);
@@ -115,8 +115,10 @@ const url = req.query.url;
 if (!url) return res.status(400).json({ success: false, error: "URL required" });
 try {
 const data = await DKurama(url);
-res.json({ success: !!data, data });
-} catch (e) {
+if (!data) {
+return res.status(404).json({ success: false, error: "anime not found" });
+}
+return res.json({ success: true, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
