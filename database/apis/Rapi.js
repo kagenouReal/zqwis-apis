@@ -105,7 +105,7 @@ const limit = parseInt(req.query.limit) || 1;
 if (!query) return res.status(400).json({ success: false, error: "Query required" });
 
 try {
-const data = await SKurama(query, limit);
+const data = await SKurama("kimetsu", 2);
 return res.json({ success: true, data });
 } catch (e) {
 return res.status(500).json({ success: false, error: e.message });
@@ -117,7 +117,7 @@ router.get("/dkurama", requireLogin, checkLimit, async (req, res) => {
 const url = req.query.url;
 if (!url) return res.status(400).json({ success: false, error: "URL required" });
 try {
-const data = await DKurama(url);
+const data = await DKurama("https://m2.kuramanime.tel/anime/184/kimetsu-no-yaiba-yuukaku-hen/episode/1");
 if (!data) {
 return res.status(404).json({ success: false, error: "Anime not found" });
 }
