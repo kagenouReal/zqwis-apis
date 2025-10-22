@@ -98,28 +98,32 @@ res.status(500).json({ success: false, error: e.message });
 }
 });
 //=====================
-router.get("/skurama", requireLogin,checkLimit,async (req, res) => {
+router.get("/skurama", requireLogin, checkLimit, async (req, res) => {
 const query = req.query.q;
 const limit = parseInt(req.query.limit) || 1;
+
 if (!query) return res.status(400).json({ success: false, error: "Query required" });
+
 try {
 const data = await SKurama(query, limit);
-res.json({ success: true, data });
+return res.json({ success: true, data });
 } catch (e) {
-res.status(500).json({ success: false, error: e.message });
+return res.status(500).json({ success: false, error: e.message });
 }
 });
-//=====================
-router.get("/dkurama", requireLogin,checkLimit,async (req, res) => {
+
+// ===================
+router.get("/dkurama", requireLogin, checkLimit, async (req, res) => {
 const url = req.query.url;
 if (!url) return res.status(400).json({ success: false, error: "URL required" });
 try {
 const data = await DKurama(url);
 if (!data) {
-return res.status(404).json({ success: false, error: "anime not found" });
+return res.status(404).json({ success: false, error: "Anime not found" });
 }
 return res.json({ success: true, data });
-res.status(500).json({ success: false, error: e.message });
+} catch (e) {
+return res.status(500).json({ success: false, error: e.message });
 }
 });
 //====================
