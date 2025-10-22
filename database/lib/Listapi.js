@@ -278,7 +278,126 @@ timeout: 20000,
 });
 return data;
 }
+async function SKurama(searchText, limit) { 
+const searchUrl = `https://m2.kuramanime.tel/anime?order_by=popular&search=${encodeURIComponent(searchText)}&page=1`;
+try {
+const html = await getHTML(searchUrl);
+const $ = cheerio.load(html);
+const animeList = []; 
+$('#animeList .filter__gallery a').each((i, el) => {
+if (i >= limit) return false;
+const href = $(el).attr('href');
+const title = $(el).find('h5.sidebar-title-h5').text().trim();
+const thumb =
+$(el).find('.product__sidebar__view__item').attr('data-setbg') ||
+$(el).find('img').attr('src') || null;
 
+if (href && title) animeList.push({ title, href, thumb });
+});
+
+if (!animeList.length) return [];
+return await Promise.all(animeList.map(async anime => {
+try {
+const detailHtml = await getHTML(anime.href);
+const $$ = cheerio.load(detailHtml); 
+const epHtml = $$('#episodeLists').attr('data-content') || '';
+const batchHtml = $$('#episodeBatchLists').attr('data-content') || '';
+const ep$ = cheerio.load(epHtml);
+const batch$ = cheerio.load(batchHtml);
+
+const episodes = [];
+const batches = [];
+
+ep$('a').each((_, a) => {
+const link = ep$(a).attr('href');
+if (link && link.includes('/episode/')) episodes.push(link);
+});
+batch$('a').each((_, a) => {
+const link = batch$(a).attr('href');
+if (link && link.includes('/batch/')) batches.push(link);
+});
+
+return {
+title: anime.title,
+href: anime.href,
+thumb: anime.thumb,
+episodes,
+batches
+};
+} catch (e) {
+console.log(`[error] ${anime.title}: ${e.message}`);
+return null;
+}
+})).then(arr => arr.filter(a => a !== null));
+
+} catch (e) {
+return [];
+}
+}
+
+async function DKurama(url) {
+const args=[
+'--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-accelerated-2d-canvas',
+'--disable-accelerated-jpeg-decoding','--disable-accelerated-video-decode','--disable-audio-output',
+'--disable-background-networking','--disable-background-timer-throttling','--disable-backgrounding-occluded-windows',
+'--disable-breakpad','--disable-client-side-phishing-detection','--disable-component-update','--disable-default-apps',
+'--disable-domain-reliability','--disable-extensions','--disable-features=TranslateUI,BlinkGenPropertyTrees,AudioServiceOutOfProcess',
+'--disable-hang-monitor','--disable-ipc-flooding-protection','--disable-renderer-backgrounding','--disable-sync',
+'--disable-software-rasterizer','--mute-audio','--no-default-browser-check','--no-first-run','--metrics-recording-only',
+'--password-store=basic','--use-mock-keychain','--headless=new','--blink-settings=imagesEnabled=false',
+'--hide-scrollbars','--window-size=1,1'
+];
+const browser = await chromium.launch({ headless: true, args });
+const page = await browser.newPage();
+let targetHtml = null;
+let pageHtml = null; 
+page.on('response', async (response) => {
+const resUrl = response.url();
+if (resUrl.includes('kuramadrive') || resUrl.includes('animeDownloadLink')) {
+try {
+const body = await response.text();
+if (body.includes('animeDownloadLink')) targetHtml = body; 
+} catch {}
+}
+});
+await page.goto(url, { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(10000); 
+pageHtml = await page.content(); 
+await browser.close();
+if (!targetHtml && !pageHtml) return null;
+const downloads = [];
+const $ = cheerio.load(targetHtml || ''); 
+$('#animeDownloadLink h6').each((_, el) => {
+const resoText = $(el).text().trim();
+const links = [];
+const nextLinks = $(el).nextUntil('h6', 'a');
+nextLinks.each((__, a) => {
+const name = $(a).text().trim().replace(/\s+/g, ' ');
+const href = $(a).attr('href');
+if (href && href.startsWith('http')) links.push({ name, href });
+});
+if (links.length) downloads.push({ resolution: resoText, links });
+});
+const streamLinks = [];
+const $$ = cheerio.load(pageHtml || '');
+$$('video#player source').each((_, el) => {
+const res = $$(el).attr('size') || 'Unknown';
+const src = $$(el).attr('src');
+if (src && src.startsWith('http')) {
+streamLinks.push({ resolution: res, url: src });
+}
+});
+return {
+downloads: downloads.map(d => ({
+resolution: d.resolution,
+links: d.links.map(l => ({ name: l.name, href: l.href }))
+})),
+streams: streamLinks.map(s => ({
+resolution: s.resolution,
+url: s.url
+}))
+};
+}
 async function myanimelist(query, type = "anime") {
 try {
 const searchUrl = `https://myanimelist.net/${type}.php?q=${encodeURIComponent(query)}&cat=${type}`;
@@ -494,123 +613,6 @@ return null;
 console.error("❌ Error during final extraction:", error.message);
 return null;
 }
-}
-
-async function SKurama(searchText, limit = 5) { 
-const searchUrl = `https://m2.kuramanime.tel/anime?order_by=popular&search=${encodeURIComponent(searchText)}&page=1`;
-try {
-const html = await getHTML(searchUrl);
-const $ = cheerio.load(html);
-const animeList = []; 
-$('#animeList .filter__gallery a').each((i, el) => {
-if (i >= limit) return false;
-const href = $(el).attr('href');
-const title = $(el).find('h5.sidebar-title-h5').text().trim();
-const thumb =
-$(el).find('.product__sidebar__view__item').attr('data-setbg') ||
-$(el).find('img').attr('src') || null;
-
-if (href && title) animeList.push({ title, href, thumb });
-});
-if (!animeList.length) return [];
-const results = [];
-for (const anime of animeList) {
-try {
-const detailHtml = await getHTML(anime.href);
-const $$ = cheerio.load(detailHtml); 
-const epHtml = $$('#episodeLists').attr('data-content') || '';
-const batchHtml = $$('#episodeBatchLists').attr('data-content') || '';
-const ep$ = cheerio.load(epHtml);
-const batch$ = cheerio.load(batchHtml);
-const episodes = [];
-const batches = [];
-ep$('a').each((_, a) => {
-const link = ep$(a).attr('href');
-if (link && link.includes('/episode/')) episodes.push(link);
-});
-batch$('a').each((_, a) => {
-const link = batch$(a).attr('href');
-if (link && link.includes('/batch/')) batches.push(link);
-});
-results.push({
-title: anime.title || 'Unknown',
-href: anime.href,
-thumb: anime.thumb,
-episodes: episodes.length ? episodes : null,
-batches: batches.length ? batches : null,
-});
-} catch (e) {
-console.log(`[error] ${anime.title}: ${e.message}`);
-}
-}
-return results;
-} catch (e) {
-return [];
-}
-}
-
-async function DKurama(url) {
-const args = [
-'--no-sandbox','--disable-setuid-sandbox','--disable-dev-shm-usage','--disable-accelerated-2d-canvas',
-'--disable-accelerated-jpeg-decoding','--disable-accelerated-video-decode','--disable-audio-output',
-'--disable-background-networking','--disable-background-timer-throttling','--disable-backgrounding-occluded-windows',
-'--disable-breakpad','--disable-client-side-phishing-detection','--disable-component-update','--disable-default-apps',
-'--disable-domain-reliability','--disable-extensions','--disable-features=TranslateUI,BlinkGenPropertyTrees,AudioServiceOutOfProcess',
-'--disable-hang-monitor','--disable-ipc-flooding-protection','--disable-renderer-backgrounding','--disable-sync',
-'--disable-software-rasterizer','--mute-audio','--no-default-browser-check','--no-first-run','--metrics-recording-only',
-'--password-store=basic','--use-mock-keychain','--headless=new','--blink-settings=imagesEnabled=false',
-'--hide-scrollbars','--window-size=1,1'
-];
-
-const browser = await chromium.launch({ headless: true, args });
-const page = await browser.newPage();
-
-let targetHtml = null;
-let pageHtml = null; 
-
-page.on('response', async (response) => {
-const resUrl = response.url();
-if (resUrl.includes('kuramadrive') || resUrl.includes('animeDownloadLink')) {
-try {
-const body = await response.text();
-if (body.includes('animeDownloadLink')) targetHtml = body; 
-} catch {}
-}
-});
-
-await page.goto(url, { waitUntil: 'networkidle' });
-await page.waitForTimeout(10000); 
-pageHtml = await page.content(); 
-await browser.close();
-
-if (!targetHtml && !pageHtml) return null;
-
-const downloads = [];
-const $ = cheerio.load(targetHtml || ''); 
-$('#animeDownloadLink h6').each((_, el) => {
-const resoText = $(el).text().trim();
-const links = [];
-const nextLinks = $(el).nextUntil('h6', 'a');
-nextLinks.each((__, a) => {
-const name = $(a).text().trim().replace(/\s+/g, ' ');
-const href = $(a).attr('href');
-if (href && href.startsWith('http')) links.push({ name, href });
-});
-if (links.length) downloads.push({ resolution: resoText, links });
-});
-
-const streams = [];
-const $$ = cheerio.load(pageHtml || '');
-$$('video#player source').each((_, el) => {
-const res = $$(el).attr('size') || 'Unknown';
-const src = $$(el).attr('src');
-if (src && src.startsWith('http')) streams.push({ resolution: res, url: src });
-});
-return {
-url: url,
-downloads: downloads.length ? downloads : null,
-streams: streams.length ? streams : null,
-};
 }
 
 async function tiktokscrape(url) {
