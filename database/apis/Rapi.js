@@ -43,8 +43,7 @@ res.status(e.status || 500).json({ success: false, error: e.message });
 }
 });
 //=====================
-// TikTok user info
-router.get("/tiktokinfo", async (req, res) => {
+router.get("/tiktokinfo",requireLogin,checkLimit, async (req, res) => {
 const { username } = req.params;
 if (!username) return res.status(400).json({ success: false, error: "Username required" });
 try {
@@ -54,9 +53,8 @@ res.json({ success: true, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// MyAnimeList search
-router.get("/mal", async (req, res) => {
+//=====================
+router.get("/mal", requireLogin,checkLimit,async (req, res) => {
 const query = req.query.q;
 const type = req.query.type || "anime";
 if (!query) return res.status(400).json({ success: false, error: "Query required" });
@@ -67,9 +65,8 @@ res.json({ success: true, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// Mediafire download info
-router.get("/mediafire", async (req, res) => {
+//=====================
+router.get("/mediafire", requireLogin,checkLimit,async (req, res) => {
 const url = req.query.url;
 if (!url) return res.status(400).json({ success: false, error: "URL required" });
 try {
@@ -79,9 +76,8 @@ res.json({ success: !!data, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// Random Hentai
-router.get("/hentai", async (req, res) => {
+//=====================
+router.get("/hentai", requireLogin,checkLimit,async (req, res) => {
 const galleryId = req.query.id || null;
 const maxPages = parseInt(req.query.max) || 10;
 try {
@@ -91,9 +87,8 @@ res.json({ success: !!data, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// MotionBG
-router.get("/motionbg", async (req, res) => {
+//=====================
+router.get("/motionbg",requireLogin,checkLimit, async (req, res) => {
 const text = req.query.q;
 try {
 const data = await getMotionBG(text);
@@ -102,11 +97,10 @@ res.json({ success: !!data, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// SKurama search
-router.get("/skurama", async (req, res) => {
+//=====================
+router.get("/skurama", requireLogin,checkLimit,async (req, res) => {
 const query = req.query.q;
-const limit = parseInt(req.query.limit) || 5;
+const limit = parseInt(req.query.limit) || 1;
 if (!query) return res.status(400).json({ success: false, error: "Query required" });
 try {
 const data = await SKurama(query, limit);
@@ -115,9 +109,8 @@ res.json({ success: true, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// DKurama download links
-router.get("/dkurama", async (req, res) => {
+//=====================
+router.get("/dkurama", requireLogin,checkLimit,async (req, res) => {
 const url = req.query.url;
 if (!url) return res.status(400).json({ success: false, error: "URL required" });
 try {
@@ -127,9 +120,8 @@ res.json({ success: !!data, data });
 res.status(500).json({ success: false, error: e.message });
 }
 });
-
-// tracking endpoint
-router.get('/tracking', async (req, res) => {
+//====================
+router.get('/tracking', requireLogin,checkLimit,async (req, res) => {
 const trackingNumber = req.query.number; 
 if (!trackingNumber) {
 return res.status(400).json({ success: false, error: "Tracking number is required" });
@@ -141,6 +133,24 @@ res.json({ success: true, data });
 } catch (err) {
 console.error("Tracking error:", err.message);
 res.status(500).json({ success: false, error: err.message });
+}
+});
+//=====================
+router.get('/gtguide',requireLogin,checkLimit, async (req, res) => {
+const name = req.query.name;
+if (!name) {
+return res.status(400).json({ success: false, error: "Query parameter 'name' required" });
+}
+
+try {
+const data = await gtguide(name);
+if (!data) {
+return res.status(404).json({ success: false, error: "Hero not found" });
+}
+return res.json({ success: true, data });
+} catch (err) {
+console.error(err);
+return res.status(500).json({ success: false, error: err.message });
 }
 });
 
